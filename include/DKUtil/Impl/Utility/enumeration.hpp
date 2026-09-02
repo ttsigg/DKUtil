@@ -228,7 +228,16 @@ namespace DKUtil::model
 		{
 			std::regex  r("::cache<(.*?)>");
 			std::cmatch m;
+#if defined(_WIN32)
 			std::regex_search(__FUNCSIG__, m, r);
+#else
+			// clang/gcc: __PRETTY_FUNCTION__ carries the same "cache<T>" fragment.
+			// Enum-name reflection is not exercised by the BG3 mods (TOML-only, and
+			// the ELF Module ctor does no section-name matching); this keeps the
+			// header compiling. Port to a magic_enum-style parser if a name is ever
+			// actually needed.
+			std::regex_search(__PRETTY_FUNCTION__, m, r);
+#endif
 
 			return m[1].first;
 		}

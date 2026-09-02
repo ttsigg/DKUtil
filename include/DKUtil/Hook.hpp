@@ -115,16 +115,16 @@
 #pragma warning(push)
 #pragma warning(disable: 4244)
 
-#include "Impl/pch.hpp"
+#include "Impl/PCH.hpp"
 
 namespace DKUtil
 {
 	constexpr auto DKU_H_VERSION = DKU_H_VERSION_MAJOR * 10000 + DKU_H_VERSION_MINOR * 100 + DKU_H_VERSION_REVISION;
 }  // namespace DKUtil
 
-#include "Impl/Hook/shared.hpp"
+#include "Impl/Hook/Shared.hpp"
 
-#include "Impl/Hook/api.hpp"
+#include "Impl/Hook/API.hpp"
 
 namespace DKUtil::Alias
 {

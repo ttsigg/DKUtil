@@ -10,6 +10,11 @@ namespace DKUtil::Hook
 	{
 	public:
 		// execution address, <cave low offset, cave high offset>
+		// Null/skipped patch: an unresolved site from a partial site catalog.
+		explicit ASMPatchHandle(std::nullptr_t) noexcept :
+			HookHandle(0, 0), Offset(0, 0), PatchSize(0)
+		{}
+
 		ASMPatchHandle(
 			const std::uintptr_t a_address,
 			const offset_pair    a_offset) noexcept :
@@ -26,12 +31,18 @@ namespace DKUtil::Hook
 		// TramEntry is the CaveEntry for asm patch
 		void Enable() noexcept override
 		{
+			if (!Address) {
+				return;  // skipped (unresolved) patch
+			}
 			WriteData(TramEntry, PatchBuf.data(), PatchSize, false);
 			__DEBUG("DKU_H: Enabled ASM patch @ {:X}", TramEntry);
 		}
 
 		void Disable() noexcept override
 		{
+			if (!Address) {
+				return;
+			}
 			WriteData(TramEntry, OldBytes.data(), PatchSize, false);
 			__DEBUG("DKU_H: Disabled ASM patch @ {:X}", TramEntry);
 		}
@@ -55,6 +66,12 @@ namespace DKUtil::Hook
 		const unpacked_data  a_patch = std::make_pair(nullptr, 0),
 		const bool           a_forward = true) noexcept
 	{
+#if !defined(_WIN32)
+		if (!a_address) {
+			// Unresolved site from a partial catalog: skip rather than abort.
+			return std::make_unique<ASMPatchHandle>(nullptr);
+		}
+#endif
 		dku_assert(a_address && a_patch.first && a_patch.second,
 			"DKU_H: Invalid ASM patch");
 

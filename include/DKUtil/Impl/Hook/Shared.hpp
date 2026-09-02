@@ -1,11 +1,16 @@
 #pragma once
-#pragma comment(lib, "Version.lib")
+#if defined(_WIN32)
+#	pragma comment(lib, "Version.lib")
+#endif
 
-#include "DKUtil/Impl/pch.hpp"
+#include "DKUtil/Impl/PCH.hpp"
 #include "DKUtil/Logger.hpp"
 #include "DKUtil/Utility.hpp"
 
 #include <xbyak/xbyak.h>
+#if !defined(_WIN32)
+#	include "DKUtil/Impl/Hook/Platform_Linux.hpp"
+#endif
 #define AsAddress(PTR) std::bit_cast<std::uintptr_t>(PTR)
 #define AsPointer(ADDR) std::bit_cast<void*>(ADDR)
 #define AsRawAddr(ADDR) dku::Hook::GetRawAddress(AsAddress(ADDR))
@@ -264,6 +269,7 @@ namespace DKUtil
 			dku_assert((min <= a_disp && a_disp <= max), "DKU_H: displacement is out of range for trampoline relocation!");
 		}
 
+#if defined(_WIN32)
 		[[nodiscard]] inline std::vector<std::uint32_t> GetFileVersion(std::string_view a_filename)
 		{
 			std::vector<std::uint32_t> version(4);
@@ -454,6 +460,87 @@ namespace DKUtil
 			std::array<SectionDescriptor, std::to_underlying(Section::total)> _sections;
 			std::vector<std::uint32_t>                                        _version;
 		};
+#else
+		// ---- Linux platform seam (POSIX; see Platform_Linux.hpp) ----
+
+		[[nodiscard]] inline std::vector<std::uint32_t> GetFileVersion(std::string_view) noexcept
+		{
+			// ELF has no VERSIONINFO resource. Game build identity comes from the
+			// site catalog's build key, not from DKUtil.
+			return std::vector<std::uint32_t>(4, 0u);
+		}
+
+		inline std::string GetModuleName() noexcept { return Platform::ExeName(); }
+		inline std::string GetModulePath() noexcept { return Platform::ExePath(); }
+		// Zero-arg process helpers, for call sites not yet renamed to GetModule*.
+		inline std::string GetProcessName() noexcept { return Platform::ExeName(); }
+		inline std::string GetProcessPath() noexcept { return Platform::ExePath(); }
+
+		class Module
+		{
+		public:
+			enum class Section : std::size_t
+			{
+				textx,
+				idata,
+				rdata,
+				data,
+				pdata,
+				tls,
+				textw,
+				gfids,
+				total
+			};
+
+			constexpr Module() = delete;
+			explicit Module(std::uintptr_t a_base) noexcept
+			{
+				const auto range = Platform::ModuleText(a_base);
+				_base = range.base;
+				_textx = range.textx;
+				_textxSize = range.textxSize;
+			}
+			explicit Module(std::string_view) noexcept :
+				Module(Platform::ModuleBase(0))
+			{}
+
+			[[nodiscard]] constexpr auto base() const noexcept { return _base; }
+			[[nodiscard]] auto           section(Section a_section) noexcept
+			{
+				// Only the executable text range is resolvable from program
+				// headers; the mods use nothing else.
+				if (a_section == Section::textx) {
+					return std::make_pair(_textx, _textxSize);
+				}
+				return std::make_pair(std::uintptr_t{ 0 }, std::size_t{ 0 });
+			}
+
+			[[nodiscard]] auto version() const noexcept { return std::vector<std::uint32_t>(4, 0u); }
+			[[nodiscard]] auto version_string(std::string_view = "-"sv) const { return std::string{ "0-0-0-0" }; }
+			[[nodiscard]] constexpr auto version_number() const noexcept { return std::uint32_t{ 0 }; }
+
+			[[nodiscard]] static Module& get(const model::concepts::dku_memory auto a_address) noexcept
+			{
+				static std::unordered_map<std::uintptr_t, Module> managed;
+				const auto base = Platform::ModuleBase(AsAddress(a_address));
+				if (!managed.contains(base)) {
+					managed.try_emplace(base, base);
+				}
+				return managed.at(base);
+			}
+
+			[[nodiscard]] static Module& get(std::string_view = {}) noexcept
+			{
+				static Module main{ Platform::ModuleBase(0) };
+				return main;
+			}
+
+		private:
+			std::uintptr_t _base{ 0 };
+			std::uintptr_t _textx{ 0 };
+			std::size_t    _textxSize{ 0 };
+		};
+#endif  // _WIN32
 
 		// COMPAT
 #include "Shared_Compat.hpp"
@@ -464,6 +551,7 @@ namespace DKUtil
 				void(TRAM_ALLOC(a_size));
 			}
 
+#if defined(_WIN32)
 			DWORD oldProtect;
 
 			auto success = ::VirtualProtect(AsPointer(a_dst), a_size, PAGE_EXECUTE_READWRITE, std::addressof(oldProtect));
@@ -476,6 +564,13 @@ namespace DKUtil
 				"DKU_H: Failed to write data, error code {}\n"
 				"at   : {:X}\ndata : {:X}\nsize : {}\nalloc: {}",
 				success, AsAddress(a_dst), AsAddress(a_data), a_size, a_requestAlloc);
+#else
+			const bool success = Platform::ProtectWrite(AsPointer(a_dst), a_data, a_size);
+			dku_assert(success,
+				"DKU_H: Failed to write data (mprotect)\n"
+				"at   : {:X}\ndata : {:X}\nsize : {}\nalloc: {}",
+				AsAddress(a_dst), AsAddress(a_data), a_size, a_requestAlloc);
+#endif
 		}
 
 		// imm
@@ -552,6 +647,15 @@ namespace DKUtil
 			dku_assert(!a_libraryName.empty() && !a_importName.empty(),
 				"DKU_H: IAT hook must have valid library name & method name\nConsider using GetProcessName([Opt]HMODULE)");
 
+#if !defined(_WIN32)
+			// No PE import table on ELF. IAT hooks are replaced by LD_PRELOAD symbol
+			// interposition on Linux (see DKUTIL-PORT-DESIGN.md §6); the mods do not
+			// call AddIATHook on Linux.
+			(void)a_moduleName;
+			(void)a_libraryName;
+			(void)a_importName;
+			return nullptr;
+#else
 			auto&       module = Module::get(a_moduleName);
 			const auto* dosHeader = module.dosHeader();
 			const auto* importTbl = adjust_pointer<const ::IMAGE_IMPORT_DESCRIPTOR>(dosHeader, module.ntHeader()->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress);
@@ -585,6 +689,7 @@ namespace DKUtil
 			}
 
 			return nullptr;
+#endif
 		}
 
 		[[nodiscard]] inline std::uintptr_t GetFuncPrologAddr(std::uintptr_t a_addr)

@@ -48,7 +48,7 @@
 #pragma warning(push)
 #pragma warning(disable: 4244)
 
-#include "Impl/pch.hpp"
+#include "Impl/PCH.hpp"
 
 #if !defined(CONFIG_ENTRY)
 
@@ -69,16 +69,16 @@ namespace DKUtil
 	constexpr auto DKU_C_VERSION = DKU_C_VERSION_MAJOR * 10000 + DKU_C_VERSION_MINOR * 100 + DKU_C_VERSION_REVISION;
 }  // namespace DKUtil
 
-#include "Impl/Config/shared.hpp"
+#include "Impl/Config/Shared.hpp"
 
-#include "Impl/Config/data.hpp"
+#include "Impl/Config/Data.hpp"
 
-#include "Impl/Config/ini.hpp"
-#include "Impl/Config/json.hpp"
-#include "Impl/Config/schema.hpp"
-#include "Impl/Config/toml.hpp"
+#include "Impl/Config/Ini.hpp"
+#include "Impl/Config/Json.hpp"
+#include "Impl/Config/Schema.hpp"
+#include "Impl/Config/Toml.hpp"
 
-#include "Impl/Config/proxy.hpp"
+#include "Impl/Config/Proxy.hpp"
 
 namespace DKUtil::Config
 {

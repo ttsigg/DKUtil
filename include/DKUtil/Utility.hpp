@@ -13,7 +13,7 @@
 #define DKU_U_VERSION_MINOR 0
 #define DKU_U_VERSION_REVISION 1
 
-#include "Impl/pch.hpp"
+#include "Impl/PCH.hpp"
 #include "Logger.hpp"
 
 /** Bunch of stuff taken from CommonLibSSE-Util */

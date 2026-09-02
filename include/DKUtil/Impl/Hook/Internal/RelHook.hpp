@@ -9,6 +9,13 @@ namespace DKUtil::Hook
 	class RelHookHandle : public HookHandle
 	{
 	public:
+		// Null/skipped hook: an unresolved site (search_pattern returned nullptr
+		// from a partial site catalog). Enable()/Disable() no-op, so the game boots
+		// with this one hook absent instead of crashing on a write to address 0.
+		explicit RelHookHandle(std::nullptr_t) noexcept :
+			HookHandle(0, 0), OpSeqSize(0), OriginalFunc(0), Destination(0)
+		{}
+
 		RelHookHandle(
 			const std::uintptr_t a_callsite,
 			const std::uintptr_t a_tramPtr,
@@ -29,12 +36,18 @@ namespace DKUtil::Hook
 
 		void Enable() noexcept override
 		{
+			if (!Address) {
+				return;  // skipped (unresolved) hook
+			}
 			WriteData(Address, Detour.data(), Detour.size(), false);
 			__DEBUG("DKU_H: Enabled relocation hook @ {:X}", Address);
 		}
 
 		void Disable() noexcept override
 		{
+			if (!Address) {
+				return;
+			}
 			WriteData(Address, OldBytes.data(), OldBytes.size(), false);
 			__DEBUG("DKU_H: Disabled relocation hook @ {:X}", Address);
 		}

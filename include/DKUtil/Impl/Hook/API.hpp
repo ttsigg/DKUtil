@@ -1,9 +1,9 @@
 #pragma once
 
-#include "assembly.hpp"
-#include "internal.hpp"
-#include "shared.hpp"
-#include "trampoline.hpp"
+#include "Assembly.hpp"
+#include "Internal.hpp"
+#include "Shared.hpp"
+#include "Trampoline.hpp"
 
 namespace DKUtil::Hook
 {
@@ -140,6 +140,11 @@ namespace DKUtil::Hook
 		const std::uintptr_t a_src,
 		F                    a_dst) noexcept
 	{
+#if !defined(_WIN32)
+		if (!a_src) {
+			return RelHookHandle{ nullptr };  // unresolved site: skip, do not patch address 0
+		}
+#endif
 		auto handle = AddRelHook<N, false>(a_src, unrestricted_cast<std::uintptr_t>(a_dst));
 		handle->Enable();
 		return std::move(*handle.get());
@@ -158,6 +163,11 @@ namespace DKUtil::Hook
 		const std::uintptr_t a_src,
 		F                    a_dst) noexcept
 	{
+#if !defined(_WIN32)
+		if (!a_src) {
+			return RelHookHandle{ nullptr };  // unresolved site: skip, do not patch address 0
+		}
+#endif
 		auto handle = AddRelHook<N, true>(a_src, unrestricted_cast<std::uintptr_t>(a_dst));
 		handle->Enable();
 		return std::move(*handle.get());

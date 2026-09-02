@@ -10,6 +10,11 @@ namespace DKUtil::Hook
 	{
 	public:
 		// execution address, trampoline address, <cave low offset, cave high offset>
+		// Null/skipped cave hook: an unresolved site from a partial site catalog.
+		explicit CaveHookHandle(std::nullptr_t) noexcept :
+			HookHandle(0, 0), Offset(0, 0), CaveSize(0), CaveEntry(0)
+		{}
+
 		CaveHookHandle(
 			const std::uintptr_t a_address,
 			const std::uintptr_t a_tramPtr,
@@ -30,6 +35,9 @@ namespace DKUtil::Hook
 
 		void Enable() noexcept override
 		{
+			if (!Address) {
+				return;  // skipped (unresolved) cave hook
+			}
 			WriteData(CavePtr, CaveBuf.data(), CaveSize, false);
 			CavePtr += CaveSize;
 			__DEBUG("DKU_H: Enabled cave hook @ {:X}", CaveEntry);
@@ -37,6 +45,9 @@ namespace DKUtil::Hook
 
 		void Disable() noexcept override
 		{
+			if (!Address) {
+				return;
+			}
 			WriteData(CavePtr - CaveSize, OldBytes.data(), CaveSize, false);
 			CavePtr -= CaveSize;
 			__DEBUG("DKU_H: Disabled cave hook @ {:X}", CaveEntry);
@@ -67,6 +78,12 @@ namespace DKUtil::Hook
 		const unpacked_data          a_epilog = std::make_pair(nullptr, 0),
 		model::enumeration<HookFlag> a_flag = HookFlag::kSkipNOP) noexcept
 	{
+#if !defined(_WIN32)
+		if (!a_address) {
+			// Unresolved site from a partial catalog: skip rather than patch 0.
+			return std::make_unique<CaveHookHandle>(nullptr);
+		}
+#endif
 		if (a_offset.second - a_offset.first == 5) {
 			a_flag.reset(HookFlag::kSkipNOP);
 		}

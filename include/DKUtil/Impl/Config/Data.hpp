@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared.hpp"
+#include "Shared.hpp"
 
 namespace DKUtil::Config::detail
 {
@@ -199,8 +199,14 @@ namespace DKUtil::Config::detail
 		return dynamic_cast<AData<data_t>*>(this);
 	}
 
+#if defined(_WIN32)
+	// These declare-but-never-define extern templates; MSVC still emits the RTTI
+	// AData needs for the dynamic_cast above. gcc/clang honour `extern template`
+	// and leave typeinfo undefined, which breaks dlopen of a plugin .so, so on
+	// Linux we let each TU implicitly instantiate instead.
 	extern template class AData<bool>;
 	extern template class AData<std::int64_t>;
 	extern template class AData<double>;
 	extern template class AData<std::basic_string<char>>;
+#endif
 }  // namespace DKUtil::Config::detail

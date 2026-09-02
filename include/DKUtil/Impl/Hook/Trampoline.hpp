@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared.hpp"
+#include "Shared.hpp"
 
 namespace DKUtil::Hook::Trampoline
 {
@@ -13,6 +13,12 @@ namespace DKUtil::Hook::Trampoline
 		{
 			release();
 
+			if (!a_from) {
+				const auto textx = Module::get().section(Module::Section::textx);
+				a_from = textx.first + textx.second;
+			}
+
+#if defined(_WIN32)
 			constexpr std::size_t    gigabyte = static_cast<std::size_t>(1) << 30;
 			constexpr std::size_t    minRange = gigabyte * 2;
 			constexpr std::uintptr_t maxAddr = std::numeric_limits<std::uintptr_t>::max();
@@ -21,11 +27,6 @@ namespace DKUtil::Hook::Trampoline
 			::SYSTEM_INFO si;
 			::GetSystemInfo(&si);
 			granularity = si.dwAllocationGranularity;
-
-			if (!a_from) {
-				const auto textx = Module::get().section(Module::Section::textx);
-				a_from = textx.first + textx.second;
-			}
 
 			std::uintptr_t       min = a_from >= minRange ? numbers::roundup(a_from - minRange, granularity) : 0;
 			const std::uintptr_t max = a_from < (maxAddr - minRange) ? numbers::rounddown(a_from + minRange, granularity) : maxAddr;
@@ -57,6 +58,17 @@ namespace DKUtil::Hook::Trampoline
 				release();
 				FATAL("DKU_H: PageAlloc failed with code: 0x{:08X}"sv, ::GetLastError());
 			}
+#else
+			if (auto* data = Platform::PageAllocNear(a_size, a_from)) {
+				_capacity = a_size;
+				_data = static_cast<std::byte*>(data);
+			}
+
+			if (!_data || !_capacity) {
+				release();
+				FATAL("DKU_H: PageAlloc failed: no free executable page within +/-2GB of .text"sv);
+			}
+#endif
 
 			return _data;
 		}

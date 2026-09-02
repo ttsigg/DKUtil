@@ -232,6 +232,12 @@ namespace DKUtil::string
 
 	[[nodiscard]] inline auto utf8_to_utf16(std::string_view a_in) noexcept -> std::optional<std::wstring>
 	{
+#if !defined(_WIN32)
+		// Linux wchar_t is 32-bit UTF-32, not UTF-16, and there is no WinAPI codec.
+		// Neither BG3 mod uses DKUtil's UTF helpers; present only so the header compiles.
+		(void)a_in;
+		return std::nullopt;
+#else
 		const auto cvt = [&](wchar_t* a_dst, std::size_t a_length) {
 			return ::MultiByteToWideChar(
 				CP_UTF8, 0, a_in.data(), static_cast<int>(a_in.length()), a_dst, static_cast<int>(a_length));
@@ -248,10 +254,15 @@ namespace DKUtil::string
 		}
 
 		return out;
+#endif
 	}
 
 	[[nodiscard]] inline auto utf16_to_utf8(std::wstring_view a_in) noexcept -> std::optional<std::string>
 	{
+#if !defined(_WIN32)
+		(void)a_in;
+		return std::nullopt;
+#else
 		const auto cvt = [&](char* a_dst, std::size_t a_length) {
 			return ::WideCharToMultiByte(
 				CP_UTF8, 0, a_in.data(), static_cast<int>(a_in.length()), a_dst, static_cast<int>(a_length), nullptr, nullptr);
@@ -268,6 +279,7 @@ namespace DKUtil::string
 		}
 
 		return out;
+#endif
 	}
 
 	inline void set_char_buffer(std::string_view a_src, std::span<char> a_dst) noexcept

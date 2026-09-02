@@ -99,6 +99,7 @@
 
 using namespace std::literals;
 
+#if defined(_WIN32)
 // winnt
 #define WIN32_LEAN_AND_MEAN
 
@@ -146,6 +147,15 @@ using namespace std::literals;
 
 #undef min
 #undef max
+#else
+// POSIX / native-Linux build. The Win32 hook/module/logger surface is provided
+// by the DKUtil Linux platform seam instead of windows.h.
+#include <cstdio>
+#include <dlfcn.h>
+#include <link.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
 
 namespace DKUtil
 {};

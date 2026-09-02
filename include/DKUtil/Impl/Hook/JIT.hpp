@@ -1,6 +1,6 @@
 #pragma once
 
-#include "assembly.hpp"
+#include "Assembly.hpp"
 
 #define FUNC_INFO(FUNC)                           \
 	DKUtil::Hook::FuncInfo                        \

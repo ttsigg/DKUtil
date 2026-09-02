@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data.hpp"
+#include "Data.hpp"
 
 #include "SimpleIni.h"
 
@@ -194,8 +194,15 @@ namespace DKUtil::Config::detail
 		const char* err_getmsg() noexcept
 		{
 			std::ranges::fill(errmsg, 0);
+#if defined(_WIN32)
 			strerror_s(errmsg, errno);
 			return errmsg;
+#else
+			// Portable across the GNU/XSI strerror_r return-type split.
+			const auto msg = std::generic_category().message(errno);
+			std::snprintf(errmsg, sizeof(errmsg), "%s", msg.c_str());
+			return errmsg;
+#endif
 		}
 
 		void err_mismatch(std::string_view a_key, std::string_view a_type, std::string_view a_value, std::string_view a_what) noexcept

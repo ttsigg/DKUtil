@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared.hpp"
+#include "Shared.hpp"
 
 #define __eval_helper(SRC) DKUtil::Config::EvaluateConfig([]() { return SRC; })
 // compile-time evaluation

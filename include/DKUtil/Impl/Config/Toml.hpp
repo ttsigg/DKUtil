@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data.hpp"
+#include "Data.hpp"
 
 #define TOML_EXCEPTIONS 0
 #include "external/toml.hpp"

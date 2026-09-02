@@ -1,6 +1,6 @@
 #pragma once
 
-#include "DKUtil/Impl/pch.hpp"
+#include "DKUtil/Impl/PCH.hpp"
 #include "DKUtil/Logger.hpp"
 #include "DKUtil/Utility.hpp"
 
@@ -46,11 +46,24 @@ namespace DKUtil::Config
             }
 		};
 
+#if defined(_WIN32)
 		std::string dir(MAX_PATH + 1, ' ');
 		auto        res = GetModuleFileNameA(nullptr, dir.data(), MAX_PATH + 1);
 		if (res == 0) {
 			ERROR("DKU_C: Unable to acquire valid path using default null path argument!\nExpected: Current directory\nResolved: NULL");
 		}
+#else
+		// GetAllFiles is unused by the BG3 mods (they use COMPILE_PROXY on a fixed
+		// relative path). Default the search root to the exe directory via
+		// /proc/self/exe rather than the PE module path.
+		std::string dir(4096, '\0');
+		auto        res = ::readlink("/proc/self/exe", dir.data(), dir.size() - 1);
+		if (res <= 0) {
+			ERROR("DKU_C: Unable to resolve /proc/self/exe for default config search path");
+			res = 0;
+		}
+		dir.resize(res > 0 ? static_cast<std::size_t>(res) : 0);
+#endif
 
 		auto eol = dir.find_last_of("\\/");
 		dir = dir.substr(0, eol);

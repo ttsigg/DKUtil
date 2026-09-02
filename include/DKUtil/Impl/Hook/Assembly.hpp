@@ -1,6 +1,9 @@
 #pragma once
 
-#include "shared.hpp"
+#include "Shared.hpp"
+#if !defined(_WIN32)
+#	include "DKUtil/Impl/Hook/SiteCatalog.hpp"
+#endif
 
 namespace DKUtil::Hook::Assembly
 {
@@ -394,6 +397,22 @@ namespace DKUtil::Hook::Assembly
 	template <string::static_string S>
 	[[nodiscard]] inline void* search_pattern(std::uintptr_t a_base = 0, std::size_t a_size = 0) noexcept
 	{
+#if defined(_WIN32)
 		return search_pattern<Pattern::do_make_pattern<S>()>();
+#else
+		// Linux: MSVC byte patterns cannot match clang .text. Resolve the pattern
+		// string against the build-keyed site catalog instead. A miss returns
+		// nullptr and the caller skips the hook (see SiteCatalog.hpp).
+		(void)a_base;
+		(void)a_size;
+		// static_string's buffer is NOT guaranteed null-terminated, so build the
+		// key from its explicit length and trim a trailing NUL if the deduced size
+		// happened to include one. Using strlen here reads into the next literal.
+		std::string_view key{ S.data(), S.length() };
+		while (!key.empty() && key.back() == '\0') {
+			key.remove_suffix(1);
+		}
+		return AsPointer(SiteCatalog::get().resolve(key));
+#endif
 	}
 }  // namespace DKUtil::Hook::Assembly

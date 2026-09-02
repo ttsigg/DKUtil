@@ -30,7 +30,7 @@
  *
  */
 
-#include "Impl/pch.hpp"
+#include "Impl/PCH.hpp"
 
 #define DKU_L_VERSION_MAJOR 1
 #define DKU_L_VERSION_MINOR 2
@@ -143,11 +143,20 @@ namespace DKUtil::Logger
 		// From CommonLibSSE https://github.com/Ryan-rsm-McKenzie/CommonLibSSE
 		inline std::filesystem::path docs_directory() noexcept
 		{
+#if defined(_WIN32)
 			wchar_t*                                               buffer{ nullptr };
 			const auto                                             result = ::SHGetKnownFolderPath(FOLDERID_Documents, KF_FLAG_DEFAULT, nullptr, std::addressof(buffer));
 			std::unique_ptr<wchar_t[], decltype(&::CoTaskMemFree)> knownPath{ buffer, ::CoTaskMemFree };
 
 			return (!knownPath || result != S_OK) ? std::filesystem::path{} : std::filesystem::path{ knownPath.get() };
+#else
+			// Never executed under PLUGIN_MODE (the BG3 mods resolve logs against
+			// current_path()); present only so the header compiles.
+			if (const char* home = std::getenv("HOME")) {
+				return std::filesystem::path{ home } / "Documents";
+			}
+			return std::filesystem::path{};
+#endif
 		}
 
 		inline spdlog::source_loc make_current(std::source_location a_loc) noexcept
@@ -157,6 +166,7 @@ namespace DKUtil::Logger
 
 		inline void report_error(bool a_fatal, std::string_view a_fmt)  // noexcept
 		{
+#if defined(_WIN32)
 			if (a_fatal) {
 				::MessageBoxA(nullptr, a_fmt.data(), Plugin::NAME.data(), MB_OK | MB_ICONSTOP);
 			} else {
@@ -167,13 +177,24 @@ namespace DKUtil::Logger
 			}
 
 			::TerminateProcess(::GetCurrentProcess(), 'FAIL');
+#else
+			// No modal UI inside an LD_PRELOAD plugin. FATAL aborts; ERROR logs and
+			// continues (a failed pattern/catalog lookup must not take down the game
+			// — see docs/linux-port/DKUTIL-PORT-DESIGN.md §7).
+			std::fprintf(stderr, "[DKUtil] %s: %.*s\n", a_fatal ? "FATAL" : "ERROR",
+				static_cast<int>(a_fmt.size()), a_fmt.data());
+			if (a_fatal) {
+				std::abort();
+			}
+#endif
 		}
 
 		inline constexpr const char* short_file(const char* path)
 		{
 			const char* file = path;
 			while (*path) {
-				if (*path++ == '\\') {
+				const char c = *path++;
+				if (c == '\\' || c == '/') {
 					file = path;
 				}
 			}

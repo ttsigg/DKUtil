@@ -10,7 +10,7 @@
 #	include <REL/Relocation.h>
 #	include <SKSE/SKSE.h>
 
-#	include "Impl/pch.hpp"
+#	include "Impl/PCH.hpp"
 
 #	include "Impl/Extra/xconsole.hpp"
 #	include "Impl/Extra/xserialize.hpp"

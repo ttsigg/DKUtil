@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data.hpp"
+#include "Data.hpp"
 
 #include "SimpleIni.h"
 
