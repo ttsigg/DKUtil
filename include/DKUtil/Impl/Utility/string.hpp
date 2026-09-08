@@ -96,6 +96,7 @@ namespace DKUtil::string
 		return std::ranges::equal(a_str1, a_str2, icmp);
 	}
 
+#if defined(__cpp_lib_ranges_starts_ends_with) && __cpp_lib_ranges_starts_ends_with >= 202106L
 	[[nodiscard]] inline constexpr bool istarts_with(std::string_view a_full, std::string_view a_pattern) noexcept
 	{
 		return std::ranges::starts_with(a_full, a_pattern, icmp);
@@ -105,6 +106,27 @@ namespace DKUtil::string
 	{
 		return std::ranges::starts_with(a_full | std::views::reverse, a_pattern | std::views::reverse, icmp);
 	}
+#else
+	// P1659 (ranges::starts_with/ends_with) isn't in libstdc++ until gcc 15;
+	// the Steam sniper SDK ships gcc-14.2.0. Hand-rolled equivalents --
+	// same comparison (icmp over the shorter, prefix/suffix-aligned run),
+	// same short-circuit on a pattern longer than the haystack.
+	[[nodiscard]] inline constexpr bool istarts_with(std::string_view a_full, std::string_view a_pattern) noexcept
+	{
+		if (a_pattern.size() > a_full.size()) {
+			return false;
+		}
+		return std::equal(a_pattern.begin(), a_pattern.end(), a_full.begin(), icmp);
+	}
+
+	[[nodiscard]] inline constexpr bool iends_with(std::string_view a_full, std::string_view a_pattern) noexcept
+	{
+		if (a_pattern.size() > a_full.size()) {
+			return false;
+		}
+		return std::equal(a_pattern.rbegin(), a_pattern.rend(), a_full.rbegin(), icmp);
+	}
+#endif
 
 	[[nodiscard]] inline constexpr bool is_only_digit(std::string_view a_str) noexcept
 	{
@@ -169,7 +191,14 @@ namespace DKUtil::string
 
 			auto res = sv | std::views::take(nth) | std::views::join_with(a_pattern) | std::ranges::to<std::string>();
 			res.append(a_replace);
+#if defined(__cpp_lib_containers_ranges) && __cpp_lib_containers_ranges >= 202202L
 			res.append_range(sv | std::views::drop(nth) | std::views::join_with(a_pattern));
+#else
+			// P1206 (container range ctors/append_range/etc.) isn't in
+			// libstdc++ until gcc 15; the Steam sniper SDK ships gcc-14.2.0.
+			// Same net effect as append_range: copy the range onto the end.
+			std::ranges::copy(sv | std::views::drop(nth) | std::views::join_with(a_pattern), std::back_inserter(res));
+#endif
 
 			return res;
 		}

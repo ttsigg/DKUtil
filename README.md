@@ -51,5 +51,17 @@ See [wiki here!](https://gottyduke.github.io/DKUtil/)
     + `CONSOLE` logging macro but for in-game console.
     + `serializable` painless, all-in-one serialization solution for SKSE plugins.(Planned to move to general support instead of strict SKSE)
 
+# Linux port (branch `linux-port`)
+This branch forks the Windows-only hook layer above onto POSIX
+(`dl_iterate_phdr` / `mmap` / `mprotect`, `Impl/Hook/Platform_Linux.hpp`) for
+the native-Linux Baldur's Gate 3 build; see the design doc at
+`../docs/linux-port/DKUTIL-PORT-DESIGN.md` in the umbrella workspace this
+checkout lives under. `test-linux/` is a standalone ctest project (no game
+binary needed — every target is hand-assembled) that proves the ported
+`AddRelHook`/`write_call`, `AddASMPatch`, `AddCaveHook`, the
+`Trampoline`/`Platform` allocator, and `SiteCatalog` all work end-to-end on
+Linux; see `../docs/linux-port/CAVE-HOOKS.md` for what each test proves and
+how to build/run it.
+
 ---
 <p align="center">MIT License, 2020-present DK</p>
