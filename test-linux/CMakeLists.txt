@@ -82,7 +82,6 @@ set(CAVE_HARNESS_INCLUDES
 # not set here, to avoid a command-line-vs-source macro redefinition
 # mismatch.
 set(CAVE_HARNESS_DEFS
-	SPDLOG_HEADER_ONLY
 	PLUGIN_MODE
 	# The Steam sniper SDK's gcc-14 libstdc++ auto-enables its TBB-backed
 	# Parallel STL the moment /usr/include/tbb/tbb.h is visible on the

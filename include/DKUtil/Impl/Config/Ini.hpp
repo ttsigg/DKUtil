@@ -84,20 +84,20 @@ namespace DKUtil::Config::detail
 						case DataType::kString:
 							{
 								std::string old{ raw };
-								dku::string::replace_nth_occurrence(raw, 0, "\\,", "_dku_comma_");
-								dku::string::replace_nth_occurrence(raw, 0, "\\\"", "_dku_quote_");
+								raw = dku::string::replace_nth_occurrence(raw, 0, "\\,", "_dku_comma_");
+								raw = dku::string::replace_nth_occurrence(raw, 0, "\\\"", "_dku_quote_");
 
 								auto sv = dku::string::split(raw, ",");
 								try {
 									if (sv.size() <= 1) {
 										old = dku::string::trim(old);
-										dku::string::replace_nth_occurrence(old, 0, "\"");
+										old = dku::string::replace_nth_occurrence(old, 0, "\"");
 										data->As<std::basic_string<char>>()->set_data(old);
 									} else {
 										std::ranges::for_each(sv, [](std::string& str) {
-											dku::string::replace_nth_occurrence(str, 0, "\"");
-											dku::string::replace_nth_occurrence(str, 0, "_dku_comma_", "\\,");
-											dku::string::replace_nth_occurrence(str, 0, "_dku_quote_", "\\\"");
+											str = dku::string::replace_nth_occurrence(str, 0, "\"");
+											str = dku::string::replace_nth_occurrence(str, 0, "_dku_comma_", "\\,");
+											str = dku::string::replace_nth_occurrence(str, 0, "_dku_quote_", "\\\"");
 											str = dku::string::trim(str);
 										});
 										data->As<std::basic_string<char>>()->set_data(sv);
